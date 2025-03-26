@@ -96,9 +96,13 @@ void SFMLWrapper::InfinityLoop() {
 void SFMLWrapper::UpdateBuffer(const Frame& frame) {
   for (uint32_t i = 0; i < width_; ++i) {
     for (uint32_t j = 0; j < height_; ++j) {
-      buffer_.setPixel({i, j}, ColorToSf(frame.pixels_[i][j]));
+      buffer_.setPixel({i, j}, ColorToSf(frame[i][j]));
     }
   }
+}
+
+sf::Color SFMLWrapper::ColorToSf(const Color& color) {
+  return sf::Color{color.r, color.g, color.b};
 }
 
 }  // namespace Renderer

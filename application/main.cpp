@@ -13,6 +13,8 @@ int main() {
 
   application->AddObject(std::move(teapot));
 
+  application->MoveCamera(Renderer::Vec3D{0, 0, -2});
+
   Renderer::SFMLWrapper sfml_wrapper{std::move(application),
                                      std::move(renderer)};
 

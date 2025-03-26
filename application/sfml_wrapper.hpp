@@ -12,11 +12,6 @@ class SFMLWrapper {
               std::unique_ptr<Renderer> renderer);
 
   void InfinityLoop();
-  void UpdateBuffer(const Frame& frame);
-
-  static sf::Color ColorToSf(const Color& color) {
-    return sf::Color{color.r, color.g, color.b};
-  }
 
  private:
   static constexpr std::string_view kWindowName = "SFML Window";
@@ -28,5 +23,9 @@ class SFMLWrapper {
   std::unique_ptr<Application> application_;
   std::unique_ptr<Renderer> renderer_;
   sf::RenderWindow window;
+
+  void UpdateBuffer(const Frame& frame);
+
+  static sf::Color ColorToSf(const Color& color);
 };
 };  // namespace Renderer

@@ -1,5 +1,4 @@
 #pragma once
-#include <assert.h>
 
 #include <array>
 
@@ -88,6 +87,13 @@ struct Matrix {
               {0, 1, 0, vec_3d.y},
               {0, 0, 1, vec_3d.z},
               {0, 0, 0, 1}}}};
+  }
+
+  static Matrix ProjectionMatrix(double near, double far) {
+    return {{{{far, 0, 0, 0},
+              {0, far, 0, 0},
+              {0, 0, near + far, -near * far},
+              {0, 0, 1, 0}}}};
   }
 
   static Matrix E() {

@@ -22,7 +22,7 @@ struct Color {
   static constexpr Color Blue() { return {0, 0, 255}; }
 
   static Color Rand() {
-    static std::mt19937 rnd;
+    static std::mt19937 rnd;  // NOLINT(*-msc51-cpp)
     uint32_t value = rnd();
     return {static_cast<uint8_t>(value >> 0 & 0xff),
             static_cast<uint8_t>(rnd() >> 8 & 255),

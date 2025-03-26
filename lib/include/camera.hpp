@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 #include <numbers>
 
 #include "primitives.hpp"
@@ -7,29 +6,25 @@
 namespace Renderer {
 
 struct Camera {
-  double near_{0.1};
-  double far_{101};
-
-  const double view_angle{std::numbers::pi_v<double> / 3};
+  static constexpr double kNear{0.1};
+  static constexpr double kFar{101};
+  static constexpr double kViewAngle{std::numbers::pi_v<double> / 3};
 
   double ox_rotation{};
   double oy_rotation{};
-  Vec3D pos{0, 0, -2};
+  Vec3D pos{};
 
-  [[nodiscard]] double GetScreenSize() const {
-    return far_ * std::tan(view_angle / 2) * 2;
+  [[nodiscard]] static double GetScreenSize() {
+    return kFar * std::tan(kViewAngle / 2) * 2;
   }
 
-  [[nodiscard]] Matrix ProjectAndScale() const {
+  [[nodiscard]] static Matrix ProjectAndScale() {
     return Matrix::MoveMatrix({
                GetScreenSize() / 2,
                GetScreenSize() / 2,
                0,
            }) *
-           Matrix{{{{far_, 0, 0, 0},
-                    {0, far_, 0, 0},
-                    {0, 0, near_ + far_, -near_ * far_},
-                    {0, 0, 1, 0}}}};
+           Matrix::ProjectionMatrix(kNear, kFar);
   }
 
   [[nodiscard]] Matrix Move() const {

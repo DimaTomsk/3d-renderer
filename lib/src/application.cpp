@@ -9,14 +9,18 @@ Object Object::FromFile(const std::string& filename) {
 
   std::string format;
   file >> format;
-  assert(format == "OFF");
+
+  if (format != "OFF") {
+    throw std::runtime_error("Unsupported file format");
+  }
 
   uint32_t n, m, k;
   file >> n >> m >> k;
   std::vector<Vec3D> points;
   points.resize(n);
   for (size_t i = 0; i < n; ++i) {
-    file >> points[i].x >> points[i].y >> points[i].z;
+    file >> points[i].x >> points[i].z >> points[i].y;
+    points[i].y *= -1;
   }
 
   for (size_t j = 0; j < m; ++j) {
@@ -27,7 +31,7 @@ Object Object::FromFile(const std::string& filename) {
       file >> x;
     }
 
-    auto color = Color::Rand();
+    const auto color = Color::Rand();
 
     if (v == 1) {
       result.primitives_.emplace_back(Point{{points[ids[0]]}, color});

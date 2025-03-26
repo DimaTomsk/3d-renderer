@@ -1,9 +1,9 @@
 #pragma once
 
 #include "camera.hpp"
+#include "primitives.hpp"
 
 #include <vector>
-#include "primitives.hpp"
 
 namespace Renderer {
 
@@ -15,9 +15,7 @@ struct Object {
 
 class Application {
  public:
-  [[nodiscard]] const std::vector<Object>& GetObjects() const {
-    return objects_;
-  }
+  [[nodiscard]] std::vector<Object> GetObjects() const { return objects_; }
 
   [[nodiscard]] Camera GetCamera() const { return camera_; }
 
@@ -29,10 +27,9 @@ class Application {
   }
 
   void MoveCamera(const Vec3D& camera_move) {
-    camera_.pos =
-        camera_.pos +
-        ToVec3D(Matrix::OyRotation(camera_.oy_rotation) *
-                Matrix::OxRotation(camera_.ox_rotation) * ToVec4D(camera_move));
+    camera_.pos = camera_.pos + Matrix::OyRotation(camera_.oy_rotation) *
+                                    Matrix::OxRotation(camera_.ox_rotation) *
+                                    camera_move;
   }
 
  private:
