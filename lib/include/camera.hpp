@@ -14,23 +14,11 @@ struct Camera {
   double oy_rotation{};
   Vec3D pos{};
 
-  [[nodiscard]] static double GetScreenSize() {
-    return kFar * std::tan(kViewAngle / 2) * 2;
-  }
+  [[nodiscard]] static double GetScreenSize();
 
-  [[nodiscard]] static Matrix ProjectAndScale() {
-    return Matrix::MoveMatrix({
-               GetScreenSize() / 2,
-               GetScreenSize() / 2,
-               0,
-           }) *
-           Matrix::ProjectionMatrix(kNear, kFar);
-  }
+  [[nodiscard]] static Matrix ProjectAndScale();
 
-  [[nodiscard]] Matrix Move() const {
-    return Matrix::OxRotation(-ox_rotation) * Matrix::OyRotation(-oy_rotation) *
-           Matrix::MoveMatrix(-pos);
-  }
+  [[nodiscard]] Matrix MoveObjects() const;
 };
 
 }  // namespace Renderer

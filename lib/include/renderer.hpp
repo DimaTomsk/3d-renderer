@@ -19,77 +19,26 @@ class BufferedFrame {
  public:
   static constexpr uint32_t kMaxDepth = 100'000;
 
-  BufferedFrame(uint32_t width, uint32_t height)
-      : width_(width),
-        height_(height),
-        depth_(width, std::vector(height, kMaxDepth)),
-        color_(width, std::vector(height, kDefaultColor)) {}
+  BufferedFrame(uint32_t width, uint32_t height);
 
-  Frame Pop() {
-    Frame result{std::move(color_)};
-    color_ = std::vector(width_, std::vector(height_, kDefaultColor));
-    std::ranges::fill(depth_, std::vector(height_, kMaxDepth));
-    return result;
-  }
+  Frame Pop();
 
-  void SetPixel(uint32_t depth, uint32_t x, uint32_t y, Color color) {
-    assert(x < width_);
-    assert(y < height_);
-
-    if (depth_[x][y] <= depth) {
-      return;
-    }
-    depth_[x][y] = depth;
-    color_[x][y] = color;
-  }
-
-  Color GetPixel(uint32_t x, uint32_t y) {
-    assert(x < width_);
-    assert(y < height_);
-    return color_[x][y];
-  }
+  void SetPixel(uint32_t depth, uint32_t x, uint32_t y, Color color);
+  [[nodiscard]] Color GetPixel(uint32_t x, uint32_t y) const;
 
  private:
   const uint32_t width_;
   const uint32_t height_;
 
   std::vector<std::vector<uint32_t>> depth_;
-  std::vector<std::vector<Color>> color_;
+  Frame current_frame_;
 };
 
 class Renderer {
  public:
-  Renderer(int32_t width, int32_t height)
-      : width_(width), height_(height), buffered_frame_(width, height) {}
+  Renderer(int32_t width, int32_t height);
 
-  Frame Render(const Application& application) {
-    const auto camera = application.GetCamera();
-
-    for (Object& object : application.GetObjects()) {
-      for (Primitive& obj_primitive : object.primitives_) {
-        std::visit(
-            [&camera, this]<typename T>(T& primitive) {
-              MoveCoordinates(primitive, camera);
-
-              for (auto base_primitive : Clipping(primitive)) {
-                for (auto scaled_primitive : ProjectAndScale(base_primitive)) {
-                  if constexpr (std::is_same_v<T, Point>) {
-                    RenderPoint(scaled_primitive);
-                  } else if constexpr (std::is_same_v<T, Line>) {
-                    RenderLine(scaled_primitive);
-                  } else if constexpr (std::is_same_v<T, Triangle>) {
-                    RenderTriangle(scaled_primitive);
-                  } else {
-                    static_assert(false, "Unexpected primitive type");
-                  }
-                }
-              }
-            },
-            obj_primitive);
-      }
-    }
-    return buffered_frame_.Pop();
-  }
+  Frame Render(const Application& application);
 
   const int32_t width_;
   const int32_t height_;
@@ -100,13 +49,13 @@ class Renderer {
   template <uint8_t Points>
   void MoveCoordinates(BasePrimitive<Points>& primitive, const Camera& camera) {
     for (auto& point : primitive.points) {
-      point = camera.Move() * point;
+      point = camera.MoveObjects() * point;
     }
   }
 
   template <uint8_t Points>
   std::vector<BasePrimitive<Points>> Clipping(
-      BasePrimitive<Points>& primitive) {
+      const BasePrimitive<Points>& primitive) {
     std::vector<BasePrimitive<Points>> result;
     std::vector<BasePrimitive<Points>> to_clip{primitive};
 
@@ -195,119 +144,14 @@ class Renderer {
     return {primitive};
   }
 
-  void RenderPoint(Point point) {
-    Vec3Di coords = WorldToFrameCoords(point[0]);
+  void RenderPoint(const Point& point);
 
-    if (!(0 <= coords.x and coords.x < width_)) {
-      return;
-    }
-    if (!(0 <= coords.y and coords.y < height_)) {
-      return;
-    }
-    buffered_frame_.SetPixel(coords.z, coords.x, coords.y, point.color);
-  }
+  void RenderLine(const Line& line);
 
-  static std::vector<Vec3Di> RasterizeLine(Vec3Di a, Vec3Di b) {
-    std::vector<Vec3Di> result;
-    if (a.x == b.x and a.y == b.y) {
-      return {{a}};
-    }
-    if (std::abs(a.x - b.x) > std::abs(a.y - b.y)) {
-      if (a.x > b.x) {
-        std::swap(a, b);
-      }
-      for (int32_t x = a.x; x <= b.x; ++x) {
-        const auto y = static_cast<int32_t>(
-            (x - a.x) * 1.0 / (b.x - a.x) * (b.y - a.y) + a.y);
-        const auto z = static_cast<int32_t>(
-            (x - a.x) * 1.0 / (b.x - a.x) * (b.z - a.z) + a.z);
-        result.push_back({x, y, z});
-      }
-    } else {
-      if (a.y > b.y) {
-        std::swap(a, b);
-      }
-      for (int32_t y = a.y; y <= b.y; ++y) {
-        const auto x = static_cast<int32_t>(
-            (y - a.y) * 1.0 / (b.y - a.y) * (b.x - a.x) + a.x);
-        const auto z = static_cast<int32_t>(
-            (y - a.y) * 1.0 / (b.y - a.y) * (b.z - a.z) + a.z);
+  void RenderTriangle(const Triangle& triangle);
 
-        result.push_back({x, y, z});
-      }
-    }
-    return result;
-  }
+  [[nodiscard]] Vec3Di WorldToFrameCoords(const Vec3D& pos) const;
 
-  void RenderLine(Line line) {
-    Vec3Di a = WorldToFrameCoords(line[0]);
-    Vec3Di b = WorldToFrameCoords(line[1]);
-
-    std::vector<Vec3Di> rasterization = RasterizeLine(a, b);
-
-    for (const auto& [x, y, z] : rasterization) {
-      if (0 <= x and x < width_) {
-        if (0 <= y and y < height_) {
-          buffered_frame_.SetPixel(z, x, y, line.color);
-        }
-      }
-    }
-  }
-
-  void RenderTriangle(Triangle triangle) {
-    Vec3Di a = WorldToFrameCoords(triangle[0]);
-    Vec3Di b = WorldToFrameCoords(triangle[1]);
-    Vec3Di c = WorldToFrameCoords(triangle[2]);
-
-    auto u = RasterizeLine(a, b);
-    auto v = RasterizeLine(b, c);
-    auto t = RasterizeLine(a, c);
-
-    using VecCmp = decltype([](const Vec3Di& first, const Vec3Di& second) {
-      return first.x < second.x;
-    });
-
-    std::unordered_map<int32_t, std::set<Vec3Di, VecCmp>> points;
-
-    for (const auto& line : {u, v, t}) {
-      for (const auto& point : line) {
-        points[point.y].insert(point);
-      }
-    }
-
-    const int32_t min_y = std::min({a.y, b.y, c.y});
-    const int32_t max_y = std::max({a.y, b.y, c.y});
-
-    for (int32_t y = std::max(0, min_y); y < height_ && y < max_y; ++y) {
-      if (points[y].empty()) {
-        continue;
-      }
-
-      const auto left = *points[y].begin();
-      const auto right = *points[y].rbegin();
-
-      for (int32_t x = std::max(0, left.x); x <= right.x && x < width_; ++x) {
-        int32_t z = left.z;
-        if (left.x != right.x) {
-          z += (x - left.x) * (right.z - left.z) / (right.x - left.x);
-        }
-        buffered_frame_.SetPixel(z, x, y, triangle.color);
-      }
-    }
-  }
-
-  [[nodiscard]] Vec3Di WorldToFrameCoords(const Vec3D& pos) const {
-    const double full_screen = Camera::GetScreenSize();
-    const int32_t offset = (width_ - height_) / 2;
-
-    const auto x = static_cast<int32_t>(pos.x * width_ / full_screen);
-    const auto y = static_cast<int32_t>(pos.y * width_ / full_screen);
-
-    const double ratio =
-        (pos.z - Camera::kNear) / (Camera::kFar - Camera::kNear);
-    const auto z = static_cast<int32_t>(ratio * BufferedFrame::kMaxDepth);
-
-    return {x, y - offset, z};
-  }
+  [[nodiscard]] static std::vector<Vec3Di> RasterizeLine(Vec3Di a, Vec3Di b);
 };
 }  // namespace Renderer
